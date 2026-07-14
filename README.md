@@ -48,6 +48,14 @@ Admin rolüne sahip kullanıcılar için özel yönetim sekmesi:
 
 ---
 
+## 🌐 Canlı Demo
+
+Projeyi canlı ortamda test etmek ve arayüzü incelemek için aşağıdaki bağlantıyı kullanabilirsiniz:
+
+👉 **[WebtoonTracker'ı GitHub Pages Üzerinden Deneyebilirsiniz](https://hickimse123.github.io/webtoontracker)**
+
+---
+
 ## 🚀 Kurulum ve Çalıştırma
 
 Bu kod tamamen istemci taraflı (client-side) çalışan, birleştirilmiş tek bir `app.js` mimarisine sahiptir. Sunucu kurulumu gerektirmeden hızlıca yayına alınabilir.
