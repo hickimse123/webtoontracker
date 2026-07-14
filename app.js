@@ -14,7 +14,7 @@ const firebaseConfig = {
   projectId: "webtoon-tracker-deneme",
   storageBucket: "webtoon-tracker-deneme.firebasestorage.app",
   messagingSenderId: "554806755485",
-  appId: "1:554806755485:web:7b4afa6defc6a1ccd19474",
+  appId: "1:554806755485:web:7b4afa6defc6a1ccd19474"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
