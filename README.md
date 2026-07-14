@@ -1,12 +1,6 @@
-AEROTOON projeniz için GitHub üzerinde parlayacak, profesyonel, modern ve detaylı bir **README.md** şablonu hazırladım. Projenizin tüm özelliklerini, rütbe ve ekonomi sistemini, oyunları ve kurulum adımlarını eksiksiz şekilde açıklıyor.
+# Webtoon Ekip Kontrol Sitesi
 
-Aşağıdaki içeriği doğrudan projenizin ana dizinindeki `README.md` dosyasına yapıştırabilirsiniz:
-
----
-
-# ✈️ AEROTOON — Webtoon Ekip Kontrol Kulesi
-
-AEROTOON, webtoon ve manga fan-çeviri (scanlation) ekiplerinin tüm iş akışını, bölüm durumlarını ve görev dağılımlarını tek bir çatı altında, gerçek zamanlı olarak yönetebilmeleri için tasarlanmış, oyunlaştırılmış (gamified) bir ekip takip panelidir. 
+Bu, webtoon ve manga fan-çeviri (scanlation) ekiplerinin tüm iş akışını, bölüm durumlarını ve görev dağılımlarını tek bir çatı altında, gerçek zamanlı olarak yönetebilmeleri için tasarlanmış, oyunlaştırılmış (gamified) bir ekip takip panelidir. 
 
 Firebase entegrasyonu sayesinde veriler anlık olarak güncellenir ve ekip üyeleri yaptıkları görevlerden puan ve coin kazanarak profillerini özelleştirebilirler.
 
@@ -56,7 +50,7 @@ Admin rolüne sahip kullanıcılar için özel yönetim sekmesi:
 
 ## 🚀 Kurulum ve Çalıştırma
 
-AEROTOON tamamen istemci taraflı (client-side) çalışan, birleştirilmiş tek bir `app.js` mimarisine sahiptir. Sunucu kurulumu gerektirmeden hızlıca yayına alınabilir.
+Bu kod tamamen istemci taraflı (client-side) çalışan, birleştirilmiş tek bir `app.js` mimarisine sahiptir. Sunucu kurulumu gerektirmeden hızlıca yayına alınabilir.
 
 ### 1. Firebase Projesi Oluşturma
 1.  [Firebase Console](https://console.firebase.google.com/) adresine gidin ve yeni bir proje oluşturun.
@@ -82,12 +76,74 @@ const firebaseConfig = {
 
 Verilerin güvenli ve stabil çalışması için Firestore kurallarınızı aşağıdaki gibi düzenleyebilirsiniz:
 
-javascript
 rules_version = '2';
+
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+    
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function getUserRoles() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.roles;
+    }
+    
+    function isAdmin() {
+      return isSignedIn() && 'admin' in getUserRoles();
+    }
+
+    function isStaff() {
+      return isSignedIn() && (
+        'admin' in getUserRoles() || 
+        'translator' in getUserRoles() || 
+        'editor' in getUserRoles() || 
+        'cleaner' in getUserRoles()
+      );
+    }
+
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() 
+                    && request.auth.uid == userId 
+                    && request.resource.data.roles.hasAll(['member']);
+      
+      allow update: if isAdmin() || (request.auth.uid == userId && request.resource.data.roles == resource.data.roles);
+      
+      allow delete: if isAdmin();
+    }
+
+    match /series/{seriesId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /chapters/{chapterId} {
+      allow read: if true;
+      allow create, delete: if isAdmin();
+      allow update: if isStaff();
+    }
+
+    match /settings/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /tasks/{taskId} {
+      allow read: if isSignedIn();
+      allow create, delete: if isAdmin();
+      allow update: if isStaff();
+    }
+
+    match /achievements/{achievementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    match /userAchievements/{userAchievementId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
     }
   }
 }
