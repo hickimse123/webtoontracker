@@ -9,12 +9,12 @@
    1) FIREBASE + GLOBAL STATE
    ========================================================================== */
 const firebaseConfig = {
-  apiKey: "AIzaSyCYCAZ4RRZsz1z_07AS6iXrxtXX1FUN_04",
-  authDomain: "aerotoon-ekip.firebaseapp.com",
-  projectId: "aerotoon-ekip",
-  storageBucket: "aerotoon-ekip.firebasestorage.app",
-  messagingSenderId: "36446182402",
-  appId: "1:36446182402:web:23d2c775c701d45ae51b1b"
+  apiKey: "API_KEYİNİZ",
+  authDomain: "firebasedomaininiz",
+  projectId: "proje_idisi",
+  storageBucket: "storagebucket_adresi",
+  messagingSenderId: "mesaj_gonderici_idisi",
+  appId: "uygulama_idisi"
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
