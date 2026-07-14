@@ -1,0 +1,529 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AEROTOON | Ekip Kontrol Paneli</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+
+<!-- Firebase SDK (v9 uyumluluk modu) -->
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+</head>
+<body class="min-h-screen flex flex-col justify-between">
+
+<div id="sky-bg" class="sky-bg"></div>
+<div id="toast-container"></div>
+
+<!-- ============================================================
+     1. GİRİŞ EKRANI (AUTH WALL)
+     ============================================================ -->
+<div id="auth-wall" class="flex-grow flex items-center justify-center p-4 relative z-10">
+  <div class="glass-panel panel-elevated w-full max-w-md rounded-2xl p-8 relative">
+    <div class="text-center mb-8">
+      <span class="btn-primary p-3.5 rounded-2xl text-2xl inline-block mb-4">
+        <i class="fa-solid fa-plane-departure"></i>
+      </span>
+      <h2 id="auth-wall-title" class="text-2xl font-extrabold font-display tracking-tight">Kokpite Hoş Geldin</h2>
+      <p class="text-gray-400 text-sm mt-2">Bölüm durumlarını ve görevlerini görmek için giriş yap.</p>
+    </div>
+
+    <form id="auth-wall-form" onsubmit="handleAuthSubmit(event)" class="space-y-4">
+      <input type="hidden" id="auth-mode" value="login">
+
+      <div id="username-field" class="hidden">
+        <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Kullanıcı Adı</label>
+        <input type="text" id="auth-username" class="input-field w-full rounded-xl p-3">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">E-Posta</label>
+        <input type="email" id="auth-email" required class="input-field w-full rounded-xl p-3" placeholder="adiniz@ekip.com">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Şifre</label>
+        <input type="password" id="auth-password" required class="input-field w-full rounded-xl p-3" placeholder="••••••••">
+      </div>
+
+      <button type="submit" id="auth-submit-btn" class="btn-primary w-full font-bold py-3.5 rounded-xl mt-2">Giriş Yap</button>
+    </form>
+
+    <div class="mt-6 text-center text-sm text-gray-400 border-t border-white/5 pt-4">
+      <span id="modal-toggle-text">Hesabın yok mu?</span>
+      <button type="button" class="text-cyan-300 font-bold ml-1 hover:underline" id="modal-toggle-btn" onclick="toggleAuthMode()">Ekibe Katıl</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     2. UYGULAMA ALANI
+     ============================================================ -->
+<div id="app-area" class="hidden flex-col flex-grow relative z-10">
+
+  <!-- NAVBAR -->
+  <nav class="glass-panel border-b border-white/5 px-4 md:px-6 py-3.5 flex items-center justify-between sticky top-0 z-40 gap-4 flex-wrap">
+    <div class="flex items-center space-x-3">
+      <span id="nav-logo-wrap"><span class="btn-primary p-2.5 rounded-xl text-lg inline-block"><i class="fa-solid fa-plane"></i></span></span>
+      <span class="text-base font-black tracking-wider font-display hide-mobile" id="nav-site-title">AEROTOON</span>
+    </div>
+
+    <div class="flex items-center gap-1 md:gap-2 text-sm font-semibold overflow-x-auto">
+      <button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap" data-view="dashboard-view" onclick="toggleView('dashboard-view')"><i class="fa-solid fa-tower-broadcast mr-1.5"></i>Kontrol Kulesi</button>
+      <button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap" data-view="series-view" onclick="toggleView('series-view')"><i class="fa-solid fa-images mr-1.5"></i>Seriler</button>
+      <span id="nav-tasks-badge"><button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap" data-view="tasks-view" onclick="toggleView('tasks-view')"><i class="fa-solid fa-list-check mr-1.5"></i>Görevlerim</button></span>
+      <button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap" data-view="leaderboard-view" onclick="toggleView('leaderboard-view')"><i class="fa-solid fa-ranking-star mr-1.5"></i>Sıralama</button>
+      <button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap hide-mobile" data-view="achievements-view" onclick="toggleView('achievements-view')"><i class="fa-solid fa-medal mr-1.5"></i>Başarımlar</button>
+      <button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap" data-view="games-view" onclick="toggleView('games-view')"><i class="fa-solid fa-dice mr-1.5"></i>Oyunlar</button>
+      <button class="nav-link px-3 py-2 rounded-lg whitespace-nowrap hide-mobile" data-view="shop-view" onclick="toggleView('shop-view')"><i class="fa-solid fa-store mr-1.5"></i>Dükkan</button>
+    </div>
+
+    <div class="flex items-center gap-2 md:gap-3">
+      <button class="rank-badge py-2 px-3" style="background:#ffd16622;color:#ffd166;border:1px solid #ffd16655" onclick="toggleView('games-view')" title="Coin Bakiyen">
+        <i class="fa-solid fa-coins"></i> <span id="nav-coin-balance">0</span>
+      </button>
+      <button class="btn-ghost w-9 h-9 rounded-xl text-xs flex items-center justify-center" onclick="openTransferModal()" title="Coin Gönder"><i class="fa-solid fa-money-bill-transfer"></i></button>
+      <button class="hidden bg-gradient-to-r from-amber-500 to-amber-600 text-[#1a1200] px-3.5 py-2 rounded-xl text-xs font-bold shadow-lg shadow-amber-600/20" id="admin-panel-btn" onclick="toggleView('admin-view')">
+        <i class="fa-solid fa-crown mr-1"></i><span class="hide-mobile">Admin Paneli</span>
+      </button>
+      <button class="flex items-center gap-2" onclick="openProfileModal()" title="Profilim">
+        <span id="nav-avatar"></span>
+        <span class="text-left hide-mobile">
+          <span class="block text-sm font-bold leading-none" id="current-username">Yükleniyor...</span>
+          <span class="flex gap-1 mt-1" id="current-user-role"></span>
+        </span>
+      </button>
+      <button class="btn-ghost px-3 py-2 rounded-xl text-xs font-bold" onclick="logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i></button>
+    </div>
+  </nav>
+
+  <!-- ANA İÇERİK -->
+  <main class="flex-grow p-4 md:p-8 max-w-7xl w-full mx-auto space-y-8">
+
+    <!-- ================= DASHBOARD ================= -->
+    <section id="dashboard-view" class="space-y-6">
+      <div class="glass-panel panel-elevated p-6 md:p-8 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-6">
+        <div>
+          <p class="text-xs font-mono text-cyan-300 tracking-widest mb-1"><i class="fa-solid fa-satellite-dish mr-1"></i> CANLI YAYIN</p>
+          <h1 class="text-2xl md:text-3xl font-extrabold font-display tracking-tight" id="dashboard-welcome-title">Uçuş Kontrol Kulesi</h1>
+          <p class="text-gray-400 text-sm mt-1" id="dashboard-welcome-desc">Ekibin tüm bölüm durumları ve görev dağılımları burada.</p>
+        </div>
+        <button class="btn-primary px-5 py-3 rounded-xl font-bold text-sm flex items-center gap-2 flex-shrink-0" onclick="toggleView('series-view')">
+          <i class="fa-solid fa-rectangle-list"></i> Aktif Serilerimiz
+        </button>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="glass-panel p-5 rounded-2xl flex items-center gap-3">
+          <span class="p-3 bg-cyan-500/10 text-cyan-300 rounded-xl text-lg"><i class="fa-solid fa-book"></i></span>
+          <div><p class="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Toplam Seri</p><h4 class="text-xl font-extrabold font-mono mt-0.5" id="stat-total-series">-</h4></div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl flex items-center gap-3">
+          <span class="p-3 bg-amber-500/10 text-amber-300 rounded-xl text-lg"><i class="fa-solid fa-plane-departure"></i></span>
+          <div><p class="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Aktif Çalışma</p><h4 class="text-xl font-extrabold font-mono mt-0.5" id="stat-active-chapters">-</h4></div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl flex items-center gap-3">
+          <span class="p-3 bg-emerald-500/10 text-emerald-300 rounded-xl text-lg"><i class="fa-solid fa-circle-check"></i></span>
+          <div><p class="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Tamamlanan</p><h4 class="text-xl font-extrabold font-mono mt-0.5" id="stat-completed-chapters">-</h4></div>
+        </div>
+        <div class="glass-panel p-5 rounded-2xl flex items-center gap-3">
+          <span class="p-3 bg-pink-500/10 text-pink-300 rounded-xl text-lg"><i class="fa-solid fa-hourglass-half"></i></span>
+          <div><p class="text-[11px] text-gray-400 uppercase font-bold tracking-wider">Bekleyen Görev</p><h4 class="text-xl font-extrabold font-mono mt-0.5" id="stat-pending-tasks">-</h4></div>
+        </div>
+      </div>
+
+      <div class="glass-panel rounded-2xl overflow-hidden panel-elevated">
+        <div class="p-5 border-b border-white/5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <h2 class="text-lg font-bold font-display flex items-center gap-2"><i class="fa-solid fa-radar text-cyan-300"></i> Bölüm Uçuş Panosu</h2>
+          <select id="filter-series" class="series-select-target input-field rounded-xl px-4 py-2.5 text-sm w-full sm:w-52" data-keep-all="true" onchange="renderChaptersTable()">
+            <option value="all">Tüm Seriler</option>
+          </select>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="bg-white/[0.02] text-gray-400 text-[11px] font-bold tracking-wider uppercase border-b border-white/5">
+                <th class="p-4">Seri</th><th class="p-4">Bölüm</th><th class="p-4">Çevirmen</th><th class="p-4">Editör</th>
+                <th class="p-4">Durum</th><th class="p-4">Klasör</th><th class="p-4 text-right">Eylem</th>
+              </tr>
+            </thead>
+            <tbody id="chapters-table-body" class="divide-y divide-white/5 text-sm">
+              <tr><td colspan="7" class="p-10 text-center"><div class="radar-loader"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SERİLER ================= -->
+    <section id="series-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold font-display flex items-center gap-2"><i class="fa-solid fa-images text-cyan-300"></i> Çevirisini Yaptığımız Seriler</h2>
+        <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Kuleye Dön</button>
+      </div>
+      <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6" id="series-grid-container"></div>
+    </section>
+
+    <!-- ================= GÖREVLERİM ================= -->
+    <section id="tasks-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold font-display flex items-center gap-2"><i class="fa-solid fa-list-check text-cyan-300"></i> Görevlerim</h2>
+        <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Kuleye Dön</button>
+      </div>
+
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div class="glass-panel p-4 rounded-2xl text-center"><p class="text-xl font-black font-mono text-gray-300" id="tasks-stat-todo">0</p><p class="text-[10px] uppercase text-gray-500 font-bold">Yapılacak</p></div>
+        <div class="glass-panel p-4 rounded-2xl text-center"><p class="text-xl font-black font-mono text-cyan-300" id="tasks-stat-doing">0</p><p class="text-[10px] uppercase text-gray-500 font-bold">Yapılıyor</p></div>
+        <div class="glass-panel p-4 rounded-2xl text-center"><p class="text-xl font-black font-mono text-emerald-300" id="tasks-stat-done">0</p><p class="text-[10px] uppercase text-gray-500 font-bold">Tamamlandı</p></div>
+        <div class="glass-panel p-4 rounded-2xl text-center"><p class="text-xl font-black font-mono text-amber-300" id="tasks-stat-points">0</p><p class="text-[10px] uppercase text-gray-500 font-bold">Toplam Puan</p></div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3"><i class="fa-solid fa-inbox mr-1.5"></i>Yapılması Gerekenler</h3>
+          <div id="tasks-col-todo" class="space-y-3"></div>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3"><i class="fa-solid fa-gear mr-1.5"></i>Aktif Görevler</h3>
+          <div id="tasks-col-doing" class="space-y-3"></div>
+        </div>
+        <div>
+          <h3 class="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3"><i class="fa-solid fa-flag-checkered mr-1.5"></i>Yapılanlar</h3>
+          <div id="tasks-col-done" class="space-y-3"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= SIRALAMA ================= -->
+    <section id="leaderboard-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold font-display flex items-center gap-2"><i class="fa-solid fa-ranking-star text-amber-300"></i> Ekip Sıralaması</h2>
+        <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Kuleye Dön</button>
+      </div>
+      <div class="space-y-3" id="leaderboard-list"></div>
+    </section>
+
+    <!-- ================= BAŞARIMLAR ================= -->
+    <section id="achievements-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between">
+        <h2 class="text-xl font-bold font-display flex items-center gap-2"><i class="fa-solid fa-medal text-amber-300"></i> Başarımlar</h2>
+        <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Kuleye Dön</button>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4" id="achievements-grid"></div>
+    </section>
+
+    <!-- ================= OYUNLAR ================= -->
+    <section id="games-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <h2 class="text-xl font-bold font-display flex items-center gap-2"><i class="fa-solid fa-dice text-cyan-300"></i> Oyunlar</h2>
+        <div class="flex items-center gap-3">
+          <span class="rank-badge py-2 px-3" style="background:#ffd16622;color:#ffd166;border:1px solid #ffd16655"><i class="fa-solid fa-coins"></i> <span id="games-coin-balance">0</span></span>
+          <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Kuleye Dön</button>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <!-- ÇARK -->
+        <div class="glass-panel panel-elevated rounded-2xl p-6 space-y-5">
+          <h3 class="text-lg font-bold font-display flex items-center gap-2"><i class="fa-solid fa-circle-notch text-amber-300"></i> Şans Çarkı</h3>
+          <div class="wheel-wrap">
+            <div class="wheel-pointer"></div>
+            <div class="wheel-disc" id="wheel-disc"></div>
+            <div class="wheel-center"><i class="fa-solid fa-plane"></i></div>
+          </div>
+          <div class="flex flex-wrap gap-1.5 justify-center text-[10px]" id="wheel-legend"></div>
+          <div class="flex items-center justify-center gap-3">
+            <button class="btn-ghost w-8 h-8 rounded-lg" onclick="setWheelBet(-10)">-</button>
+            <span class="font-mono font-bold text-amber-300"><i class="fa-solid fa-coins"></i> <span id="wheel-bet-display">50</span></span>
+            <button class="btn-ghost w-8 h-8 rounded-lg" onclick="setWheelBet(10)">+</button>
+          </div>
+          <button id="wheel-spin-btn" class="btn-gold w-full py-3 rounded-xl font-bold" onclick="spinWheel()"><i class="fa-solid fa-play mr-1.5"></i>Çevir</button>
+        </div>
+
+        <!-- MAYIN TARLASI -->
+        <div class="glass-panel panel-elevated rounded-2xl p-6 space-y-5">
+          <h3 class="text-lg font-bold font-display flex items-center gap-2"><i class="fa-solid fa-bomb text-red-400"></i> Mayın Tarlası</h3>
+          <div class="mines-grid" id="mines-grid"></div>
+          <div class="grid grid-cols-2 gap-3 text-center">
+            <div class="glass-panel rounded-xl p-2.5"><p class="font-mono font-bold text-cyan-300" id="mines-multiplier">1.00x</p><p class="text-[10px] text-gray-500 uppercase">Çarpan</p></div>
+            <div class="glass-panel rounded-xl p-2.5"><p class="font-mono font-bold text-emerald-300" id="mines-potential">0</p><p class="text-[10px] text-gray-500 uppercase">Kazanç</p></div>
+          </div>
+          <div class="flex items-center justify-center gap-3">
+            <button class="btn-ghost w-8 h-8 rounded-lg" onclick="setMinesBet(-10)">-</button>
+            <span class="font-mono font-bold text-amber-300"><i class="fa-solid fa-coins"></i> <span id="mines-bet-display">50</span></span>
+            <button class="btn-ghost w-8 h-8 rounded-lg" onclick="setMinesBet(10)">+</button>
+          </div>
+          <button id="mines-start-btn" class="btn-gold w-full py-3 rounded-xl font-bold" onclick="startMines()"><i class="fa-solid fa-play mr-1.5"></i>Başlat (6 mayın / 36 kare)</button>
+          <button id="mines-cashout-btn" class="btn-primary w-full py-3 rounded-xl font-bold hidden" onclick="cashoutMines()"><i class="fa-solid fa-hand-holding-dollar mr-1.5"></i>Nakite Çevir</button>
+        </div>
+
+        <!-- XOX -->
+        <div class="glass-panel panel-elevated rounded-2xl p-6 space-y-5">
+          <h3 class="text-lg font-bold font-display flex items-center gap-2"><i class="fa-solid fa-robot text-cyan-300"></i> XOX vs Kokpit AI</h3>
+          <div class="xox-grid" id="xox-grid"></div>
+          <p class="text-center text-[11px] text-gray-500 font-mono">Skor: <span id="xox-stats">0G / 0K / 0B</span></p>
+          <div class="flex items-center justify-center gap-3">
+            <button class="btn-ghost w-8 h-8 rounded-lg" onclick="setXoxBet(-10)">-</button>
+            <span class="font-mono font-bold text-amber-300"><i class="fa-solid fa-coins"></i> <span id="xox-bet-display">20</span></span>
+            <button class="btn-ghost w-8 h-8 rounded-lg" onclick="setXoxBet(10)">+</button>
+          </div>
+          <button id="xox-start-btn" class="btn-gold w-full py-3 rounded-xl font-bold" onclick="startXox()"><i class="fa-solid fa-play mr-1.5"></i>Yeni Oyun (Kazanırsan 2x)</button>
+          <p class="text-[10px] text-gray-500 text-center">Sen ✈️, AI 💣. Sen başlarsın. Ne AI seni hep yener ne de hep sen kazanırsın — AI'nın hata payı oynadıkça yavaşça artar.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= DÜKKAN ================= -->
+    <section id="shop-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between flex-wrap gap-3">
+        <h2 class="text-xl font-bold font-display flex items-center gap-2"><i class="fa-solid fa-store text-amber-300"></i> Dükkan</h2>
+        <div class="flex items-center gap-3">
+          <span class="rank-badge py-2 px-3" style="background:#ffd16622;color:#ffd166;border:1px solid #ffd16655"><i class="fa-solid fa-coins"></i> <span id="nav-coin-balance-shop">0</span></span>
+          <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Kuleye Dön</button>
+        </div>
+      </div>
+      <p class="text-xs text-gray-500">Kazandığın coinlerle profilini özelleştir: 15 özel çerçeve + 15 özel isim efekti seni ekip içinde öne çıkarır. ✨</p>
+      <div class="flex gap-2">
+        <button class="shop-tab-btn tab-btn px-4 py-2 rounded-xl text-sm font-bold border border-white/10 active" data-shop-tab="frame" onclick="switchShopTab('frame')"><i class="fa-solid fa-circle-user mr-1.5"></i>Çerçeveler</button>
+        <button class="shop-tab-btn tab-btn px-4 py-2 rounded-xl text-sm font-bold border border-white/10" data-shop-tab="effect" onclick="switchShopTab('effect')"><i class="fa-solid fa-wand-magic-sparkles mr-1.5"></i>İsim Efektleri</button>
+      </div>
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4" id="shop-grid"></div>
+    </section>
+
+    <!-- ================= ADMİN PANELİ ================= -->
+    <section id="admin-view" class="hidden space-y-6">
+      <div class="flex items-center justify-between border-b border-white/5 pb-4 flex-wrap gap-3">
+        <div>
+          <h2 class="text-2xl font-black font-display text-amber-300">Yönetim Paneli</h2>
+          <p class="text-gray-400 text-xs mt-1">Rolleri, serileri, bölümleri, görevleri, başarımları ve site temasını buradan yönet.</p>
+        </div>
+        <button class="btn-ghost px-4 py-2 rounded-xl font-bold text-xs" onclick="toggleView('dashboard-view')">Panele Dön</button>
+      </div>
+
+      <div id="admin-guard" class="hidden glass-panel rounded-2xl p-10 text-center text-gray-400">
+        <i class="fa-solid fa-lock text-2xl mb-3 block"></i> Bu alana erişim yetkin yok.
+      </div>
+
+      <div id="admin-panel-content" class="space-y-6">
+        <div class="flex border-b border-white/5 gap-1 overflow-x-auto whitespace-nowrap pb-px">
+          <button class="tab-btn px-4 py-2.5 text-gray-400 font-bold text-sm" id="tab-btn-users" onclick="switchAdminTab('users')">Kullanıcı Rolleri</button>
+          <button class="tab-btn px-4 py-2.5 text-gray-400 font-bold text-sm" id="tab-btn-series" onclick="switchAdminTab('series')">Seriler</button>
+          <button class="tab-btn px-4 py-2.5 text-gray-400 font-bold text-sm" id="tab-btn-chapters" onclick="switchAdminTab('chapters')">Bölümler</button>
+          <button class="tab-btn px-4 py-2.5 text-gray-400 font-bold text-sm" id="tab-btn-tasks" onclick="switchAdminTab('tasks')">Görev Ata</button>
+          <button class="tab-btn px-4 py-2.5 text-gray-400 font-bold text-sm" id="tab-btn-achievements" onclick="switchAdminTab('achievements')">Başarımlar</button>
+          <button class="tab-btn px-4 py-2.5 text-gray-400 font-bold text-sm" id="tab-btn-ui" onclick="switchAdminTab('ui')">Site Teması</button>
+        </div>
+
+        <!-- TAB: KULLANICILAR -->
+        <div id="admin-tab-users" class="glass-panel p-6 rounded-2xl">
+          <h3 class="text-lg font-bold font-display mb-4 flex items-center gap-2"><i class="fa-solid fa-user-gear text-amber-300"></i> Kayıtlı Üyeler & Roller</h3>
+          <p class="text-xs text-gray-500 mb-4">Bir üye birden fazla role sahip olabilir. Rozete tıklayarak aç/kapat. Navbarda sadece en yüksek öncelikli rol gösterilir.</p>
+          <div class="overflow-x-auto">
+            <table class="w-full text-left">
+              <thead><tr class="bg-white/[0.02] text-gray-400 text-xs uppercase border-b border-white/5">
+                <th class="p-3">Üye</th><th class="p-3">Roller</th><th class="p-3">Puan</th><th class="p-3">Coin</th><th class="p-3 text-right">—</th>
+              </tr></thead>
+              <tbody id="admin-users-table" class="divide-y divide-white/5 text-sm"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- TAB: SERİLER -->
+        <div id="admin-tab-series" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="glass-panel p-6 rounded-2xl h-fit">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-folder-plus text-amber-300"></i> Yeni Seri Ekle</h3>
+            <form id="add-series-form" onsubmit="addSeries(event)" class="space-y-3.5">
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Seri Adı</label><input type="text" id="series-name" required class="input-field w-full rounded-xl p-2.5"></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Kapak URL</label><input type="url" id="series-cover" required class="input-field w-full rounded-xl p-2.5"></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Tür</label><input type="text" id="series-genre" placeholder="Aksiyon, Romantizm..." class="input-field w-full rounded-xl p-2.5"></div>
+              <div>
+                <label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Durum</label>
+                <select id="series-status" class="input-field w-full rounded-xl p-2.5">
+                  <option>Devam Ediyor</option><option>Tamamlandı</option><option>Durduruldu</option><option>Beklemede</option>
+                </select>
+              </div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Açıklama</label><textarea id="series-desc" required class="input-field w-full rounded-xl p-2.5 h-24"></textarea></div>
+              <button type="submit" class="btn-gold w-full font-bold py-2.5 rounded-xl">Seriyi Kaydet</button>
+            </form>
+          </div>
+          <div class="lg:col-span-2 glass-panel p-6 rounded-2xl">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-users-gear text-amber-300"></i> Seri Ekip Atamaları</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead><tr class="bg-white/[0.02] text-gray-400 text-[11px] uppercase border-b border-white/5">
+                  <th class="p-2">Kapak</th><th class="p-2">Seri</th><th class="p-2">Çevirmen</th><th class="p-2">Temizlikçi</th><th class="p-2">Redaktör</th><th class="p-2">Dizgici</th><th class="p-2">Kalite</th><th class="p-2">Raw</th><th class="p-2 text-right">Sil</th>
+                </tr></thead>
+                <tbody id="admin-series-list" class="divide-y divide-white/5 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: BÖLÜMLER -->
+        <div id="admin-tab-chapters" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="glass-panel p-6 rounded-2xl h-fit">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-book-medical text-amber-300"></i> Bölüm Girişi</h3>
+            <form id="add-chapter-form" onsubmit="addChapter(event)" class="space-y-3.5">
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Seri</label>
+                <select id="chapter-series-select" class="series-select-target input-field w-full rounded-xl p-2.5" required></select>
+              </div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Bölüm No</label><input type="number" id="chapter-num" required class="input-field w-full rounded-xl p-2.5"></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Çalışma Klasörü Linki</label><input type="url" id="chapter-folder" class="input-field w-full rounded-xl p-2.5" placeholder="Drive / Discord linki"></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Başlangıç Durumu</label>
+                <select id="chapter-status" class="input-field w-full rounded-xl p-2.5">
+                  <option value="Ham Bulundu">🛰️ Ham Bulundu</option>
+                  <option value="Çeviride" selected>✍️ Çeviride</option>
+                  <option value="Temizlikte">🧼 Temizlikte</option>
+                  <option value="Redaksiyonda">📝 Redaksiyonda</option>
+                  <option value="Dizgide">🖼️ Dizgide</option>
+                  <option value="Kalite Kontrolde">🔎 Kalite Kontrolde</option>
+                  <option value="Tamamlandı">✅ Tamamlandı</option>
+                </select>
+              </div>
+              <button type="submit" class="btn-gold w-full font-bold py-2.5 rounded-xl">Bölüm Ekle</button>
+            </form>
+          </div>
+          <div class="lg:col-span-2 glass-panel p-6 rounded-2xl">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-tasks text-amber-300"></i> Mevcut Bölümler</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead><tr class="bg-white/[0.02] text-gray-400 text-xs uppercase border-b border-white/5">
+                  <th class="p-3">Seri</th><th class="p-3">Bölüm</th><th class="p-3">Durum</th><th class="p-3 text-right">Sil</th>
+                </tr></thead>
+                <tbody id="admin-chapters-list" class="divide-y divide-white/5 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: GÖREV ATA -->
+        <div id="admin-tab-tasks" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="glass-panel p-6 rounded-2xl h-fit">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-clipboard-list text-amber-300"></i> Görev Ata</h3>
+            <form id="add-task-form" onsubmit="addTask(event)" class="space-y-3.5">
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Ekip Üyesi</label><select id="task-assignee-select" class="input-field w-full rounded-xl p-2.5" required></select></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Seri</label><select id="task-series-select" class="series-select-target input-field w-full rounded-xl p-2.5" required></select></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Bölüm No (opsiyonel)</label><input type="text" id="task-chapter-num" class="input-field w-full rounded-xl p-2.5"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Görev Tipi</label><select id="task-type-select" onchange="onTaskTypeChange()" class="input-field w-full rounded-xl p-2.5"></select></div>
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Öncelik</label>
+                  <select id="task-priority-select" class="input-field w-full rounded-xl p-2.5">
+                    <option>Düşük</option><option selected>Normal</option><option>Yüksek</option><option>Acil</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Puan</label><input type="number" id="task-points" class="input-field w-full rounded-xl p-2.5" value="10"></div>
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Son Tarih</label><input type="date" id="task-due-date" class="input-field w-full rounded-xl p-2.5"></div>
+              </div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Açıklama</label><textarea id="task-description" class="input-field w-full rounded-xl p-2.5 h-20" placeholder="Görevle ilgili not..."></textarea></div>
+              <button type="submit" class="btn-gold w-full font-bold py-2.5 rounded-xl">Görevi Ata</button>
+            </form>
+          </div>
+          <div class="lg:col-span-2 glass-panel p-6 rounded-2xl">
+            <div class="flex items-center justify-between mb-4 flex-wrap gap-3">
+              <h3 class="text-lg font-bold font-display"><i class="fa-solid fa-list-check text-amber-300"></i> Tüm Görevler</h3>
+              <select id="admin-task-filter" class="input-field rounded-xl px-3 py-2 text-xs" onchange="renderAdminTasksList()">
+                <option value="all">Tümü</option><option value="Bekliyor">Bekliyor</option><option value="Yapılıyor">Yapılıyor</option><option value="Tamamlandı">Tamamlandı</option>
+              </select>
+            </div>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead><tr class="bg-white/[0.02] text-gray-400 text-xs uppercase border-b border-white/5">
+                  <th class="p-3">Üye</th><th class="p-3">Tip</th><th class="p-3">Seri/Bölüm</th><th class="p-3">Durum</th><th class="p-3">Puan</th><th class="p-3 text-right">Sil</th>
+                </tr></thead>
+                <tbody id="admin-tasks-list" class="divide-y divide-white/5 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: BAŞARIMLAR -->
+        <div id="admin-tab-achievements" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div class="glass-panel p-6 rounded-2xl h-fit">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-medal text-amber-300"></i> Başarım Oluştur</h3>
+            <form id="add-achievement-form" onsubmit="addAchievement(event)" class="space-y-3.5">
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Ad</label><input type="text" id="ach-name" required class="input-field w-full rounded-xl p-2.5" placeholder="İlk Uçuş"></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Açıklama</label><input type="text" id="ach-desc" class="input-field w-full rounded-xl p-2.5"></div>
+              <div class="grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">FontAwesome İkon</label><input type="text" id="ach-icon" class="input-field w-full rounded-xl p-2.5" placeholder="fa-medal"></div>
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Renk</label><input type="color" id="ach-color" value="#ffb703" class="input-field w-full rounded-xl p-1 h-10"></div>
+              </div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Tip</label>
+                <select id="ach-type" class="input-field w-full rounded-xl p-2.5" onchange="onAchTypeChange()">
+                  <option value="manual">Manuel (admin verir)</option>
+                  <option value="auto">Otomatik (koşula göre)</option>
+                </select>
+              </div>
+              <div id="ach-auto-fields" class="hidden grid grid-cols-2 gap-3">
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Metrik</label>
+                  <select id="ach-metric" class="input-field w-full rounded-xl p-2.5"><option value="completedTasks">Tamamlanan Görev</option><option value="points">Puan</option></select>
+                </div>
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Eşik</label><input type="number" id="ach-threshold" class="input-field w-full rounded-xl p-2.5" value="10"></div>
+              </div>
+              <button type="submit" class="btn-gold w-full font-bold py-2.5 rounded-xl">Başarım Oluştur</button>
+            </form>
+          </div>
+          <div class="lg:col-span-2 glass-panel p-6 rounded-2xl">
+            <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-trophy text-amber-300"></i> Tüm Başarımlar</h3>
+            <div class="overflow-x-auto">
+              <table class="w-full text-left">
+                <thead><tr class="bg-white/[0.02] text-gray-400 text-xs uppercase border-b border-white/5">
+                  <th class="p-3">İkon</th><th class="p-3">Ad</th><th class="p-3">Koşul</th><th class="p-3">Sahip</th><th class="p-3 text-right">Ver</th><th class="p-3 text-right">Sil</th>
+                </tr></thead>
+                <tbody id="admin-achievements-list" class="divide-y divide-white/5 text-sm"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB: TEMA -->
+        <div id="admin-tab-ui" class="hidden">
+          <div class="glass-panel p-6 rounded-2xl max-w-2xl space-y-6">
+            <div>
+              <h3 class="text-lg font-bold font-display mb-4"><i class="fa-solid fa-image text-amber-300"></i> Site Logosu</h3>
+              <div class="flex items-center gap-4">
+                <img id="ui-logo-preview" src="" class="w-16 h-16 rounded-2xl object-cover bg-white/5" onerror="this.style.opacity=0">
+                <div class="space-y-2">
+                  <label class="btn-ghost inline-block px-4 py-2 rounded-xl text-xs font-bold cursor-pointer">
+                    <i class="fa-solid fa-upload mr-1.5"></i>Logo Yükle
+                    <input type="file" accept="image/*" class="hidden" onchange="handleLogoUpload(this)">
+                  </label>
+                  <button class="btn-danger px-4 py-2 rounded-xl text-xs font-bold" onclick="removeLogo()">Kaldır</button>
+                </div>
+              </div>
+            </div>
+            <form id="ui-config-form" onsubmit="saveUIConfig(event)" class="space-y-4 border-t border-white/5 pt-6">
+              <h3 class="text-lg font-bold font-display"><i class="fa-solid fa-palette text-amber-300"></i> Tema & Metinler</h3>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Site Adı</label><input type="text" id="ui-site-title" class="input-field w-full rounded-xl p-2.5"></div>
+                <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Vurgu Rengi</label><input type="color" id="ui-accent-color" value="#3fd0f0" class="input-field w-full rounded-xl p-1 h-10"></div>
+              </div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Anasayfa Başlığı</label><input type="text" id="ui-welcome-title" class="input-field w-full rounded-xl p-2.5"></div>
+              <div><label class="block text-xs font-semibold uppercase text-gray-400 mb-1">Anasayfa Açıklaması</label><input type="text" id="ui-welcome-desc" class="input-field w-full rounded-xl p-2.5"></div>
+              <button type="submit" class="btn-primary w-full font-bold py-3 rounded-xl">Kaydet</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<!-- FOOTER -->
+<footer class="glass-panel border-t border-white/5 py-6 text-center text-xs text-gray-500 relative z-10">
+  <p>&copy; <span id="footer-year">2026</span> <span id="footer-site-title">AEROTOON</span>. Bütün hakları çeviri ekibine aittir.</p>
+</footer>
+
+<!-- ============================================================
+     SCRIPT (TEK DOSYA)
+     ============================================================ -->
+<script src="js/app.js"></script>
+</body>
+</html>
