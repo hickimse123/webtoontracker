@@ -1429,7 +1429,7 @@ async function spinWheel() {
   const segCenterPct = cumulative + result.weight / 2;
   const segAngle = segCenterPct * 3.6;
   const spins = 5 + Math.floor(Math.random() * 3);
-  const target = spins * 360 + (360 - segAngle);
+  const target = spins * 360 + (360 - segAngle) + 90;
   wheelRotation += (target - (wheelRotation % 360));
 
   const disc = byId('wheel-disc');
