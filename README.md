@@ -73,14 +73,14 @@ const firebaseConfig = {
 
 
 ### 3. Firestore Kuralları (Rules)
-
 Verilerin güvenli ve stabil çalışması için Firestore kurallarınızı aşağıdaki gibi düzenleyebilirsiniz:
 
+```javascript
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-  
+    
     function isSignedIn() {
       return request.auth != null;
     }
@@ -104,13 +104,10 @@ service cloud.firestore {
 
     match /users/{userId} {
       allow read: if isSignedIn();
-      
       allow create: if isSignedIn() 
                     && request.auth.uid == userId 
                     && request.resource.data.roles.hasAll(['member']);
-      
       allow update: if isAdmin() || (request.auth.uid == userId && request.resource.data.roles == resource.data.roles);
-      
       allow delete: if isAdmin();
     }
 
@@ -147,7 +144,6 @@ service cloud.firestore {
     }
   }
 }
-
 
 ### 4. Yayına Alma (Deployment)
 
