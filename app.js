@@ -9,12 +9,12 @@
    1) FIREBASE + GLOBAL STATE
    ========================================================================== */
 const firebaseConfig = {
-  apiKey: "API_KEYİNİZ",
-  authDomain: "firebasedomaininiz",
-  projectId: "proje_idisi",
-  storageBucket: "storagebucket_adresi",
-  messagingSenderId: "mesaj_gonderici_idisi",
-  appId: "uygulama_idisi"
+  apiKey: "AIzaSyBshDncu6q2q19vPn7Y-P9zi8IkSRXYaPY",
+  authDomain: "webtoon-tracker-deneme.firebaseapp.com",
+  projectId: "webtoon-tracker-deneme",
+  storageBucket: "webtoon-tracker-deneme.firebasestorage.app",
+  messagingSenderId: "554806755485",
+  appId: "1:554806755485:web:7b4afa6defc6a1ccd19474",
 };
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
