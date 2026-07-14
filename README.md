@@ -80,7 +80,7 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+  
     function isSignedIn() {
       return request.auth != null;
     }
