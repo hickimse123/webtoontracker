@@ -61,7 +61,7 @@ Bu kod tamamen istemci taraflı (client-side) çalışan, birleştirilmiş tek b
 ### 2. Yapılandırma Güncellemesi
 `app.js` dosyasının en üstünde yer alan `firebaseConfig` alanını kendi Firebase bilgilerinizle değiştirin:
 
-javascript
+```javascript
 const firebaseConfig = {
   apiKey: "YOUR_API_KEY",
   authDomain: "YOUR_AUTH_DOMAIN",
@@ -71,6 +71,7 @@ const firebaseConfig = {
   appId: "YOUR_APP_ID"
 };
 
+```
 
 ### 3. Firestore Kuralları (Rules)
 Verilerin güvenli ve stabil çalışması için Firestore kurallarınızı aşağıdaki gibi düzenleyebilirsiniz:
@@ -144,6 +145,8 @@ service cloud.firestore {
     }
   }
 }
+
+```
 
 ### 4. Yayına Alma (Deployment)
 
