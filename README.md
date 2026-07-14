@@ -177,4 +177,6 @@ Bu proje **MIT Lisansı** altında lisanslanmıştır. Detaylar için `LICENSE` 
 ### 💡 Ekip İçin Küçük Bir İpucu
 `app.js` dosyasındaki Firebase config değeriniz içinde bulunan API anahtarı gibi kritik verileri GitHub'a yüklemeden önce gizlemek isteyebilirsiniz. Ancak statik bir proje olduğu için kodun çalışması adına bu bilgilerin tarayıcı tarafından okunması gerekir. Eğer açık bir depoda (Public Repo) paylaşacaksanız, Firebase güvenlik kurallarınızı (Rules) doğru yapılandırdığınızdan emin olmanız önemlidir.
 
+---
+
 by Hiç Kimse
